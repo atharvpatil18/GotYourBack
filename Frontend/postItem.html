@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Item - GotYourBack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-light">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="bi bi-people-fill"></i> GotYourBack
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation" aria-controls="navbarNav" aria-expanded="false">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Browse Items</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="postItem.html">Post Item</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="messages.html">Messages</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">Dashboard</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <span class="navbar-text me-3">
+                        Welcome, <span id="userName">User</span>!
+                    </span>
+                    <a href="profile.html" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-person-circle"></i> Profile
+                    </a>
+                    <button class="btn btn-outline-danger" onclick="logout()">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h2 class="text-center mb-4">Post New Item</h2>
+                        
+                        <form id="postItemForm" class="needs-validation" novalidate>
+                            <div class="mb-3">
+                                <label for="itemName" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="itemName" required>
+                                <div class="invalid-feedback">Please provide an item name.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" rows="4" required></textarea>
+                                <div class="invalid-feedback">Please provide a description.</div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="category" class="form-label">Category</label>
+                                    <select class="form-select" id="category" required>
+                                        <option value="">Select Category</option>
+                                        <option value="Books">Books</option>
+                                        <option value="Electronics">Electronics</option>
+                                        <option value="Clothes">Clothes</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                    <div class="invalid-feedback">Please select a category.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label d-block">Type</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="type" 
+                                               id="typeLend" value="Lend" required>
+                                        <label class="btn btn-outline-primary" for="typeLend">
+                                            <i class="bi bi-arrow-left-right"></i> Lend
+                                        </label>
+                                        
+                                        <input type="radio" class="btn-check" name="type" 
+                                               id="typeSell" value="Sell">
+                                        <label class="btn btn-outline-primary" for="typeSell">
+                                            <i class="bi bi-tag"></i> Sell
+                                        </label>
+                                    </div>
+                                    <div class="invalid-feedback">Please select a type.</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="imageUrl" class="form-label">Image URL</label>
+                                <input type="url" class="form-control" id="imageUrl" required>
+                                <div class="form-text">Provide a direct URL to your item's image</div>
+                                <div class="invalid-feedback">Please provide a valid image URL.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="urgent">
+                                    <label class="form-check-label" for="urgent">
+                                        Mark as Urgent
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> Post Item
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { api } from './scripts/api.js';
+        import { showAlert } from './scripts/utils.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set user name
+            document.getElementById('userName').textContent = 
+                localStorage.getItem('userName') || 'User';
+
+            // Handle form submission
+            const form = document.getElementById('postItemForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
+
+                const selectedType = document.querySelector('input[name="type"]:checked');
+                if (!selectedType) {
+                    showAlert('Please select a type (Lend or Sell)', 'danger');
+                    return;
+                }
+
+                const itemData = {
+                    name: document.getElementById('itemName').value.trim(),
+                    description: document.getElementById('description').value.trim(),
+                    category: document.getElementById('category').value,
+                    type: selectedType.value,
+                    imageUrl: document.getElementById('imageUrl').value.trim(),
+                    urgent: document.getElementById('urgent').checked
+                };
+
+                // Validate required fields
+                if (!itemData.name || !itemData.description || !itemData.category || !itemData.imageUrl) {
+                    showAlert('Please fill in all required fields', 'danger');
+                    return;
+                }
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Posting...';
+
+                try {
+                    const result = await api.createItem(itemData);
+                    if (result) {
+                        showAlert('Item posted successfully! Redirecting to browse items...', 'success');
+                        // Reset form
+                        form.reset();
+                        form.classList.remove('was-validated');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
+                    }
+                } catch (error) {
+                    showAlert(error.message || 'Failed to post item. Please try again.', 'danger');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="bi bi-plus-circle"></i> Post Item';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

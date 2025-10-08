@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GotYourBack - Campus Item Sharing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-light">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="bi bi-people-fill"></i> GotYourBack
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" title="Toggle navigation menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.html">Browse Items</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="postItem.html">Post Item</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="messages.html">Messages</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">Dashboard</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <span class="navbar-text me-3">
+                        Welcome, <span id="userName">User</span>!
+                    </span>
+                    <a href="profile.html" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-person-circle"></i> Profile
+                    </a>
+                    <button class="btn btn-outline-danger" id="logoutBtn">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <!-- Search and Filters -->
+        <div class="dashboard-section mb-4">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <h3 class="h5 mb-3">
+                        <i class="bi bi-search"></i>
+                        Find Items
+                    </h3>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0 search-bar py-2" 
+                               id="searchInput" placeholder="Search by name, category, or description...">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h3 class="h5 mb-3">
+                        <i class="bi bi-funnel"></i>
+                        Filters
+                    </h3>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <select class="form-select filter-select" id="categoryFilter" title="Filter by category">
+                            <option value="">All Categories</option>
+                            <option value="Books">Books</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Clothes">Clothes</option>
+                            <option value="Others">Others</option>
+                        </select>
+                        <select class="form-select filter-select" id="typeFilter" title="Filter by type">
+                            <option value="">All Types</option>
+                            <option value="LEND">Lend</option>
+                            <option value="SELL">Sell</option>
+                        </select>
+                        <div class="form-check form-switch d-flex align-items-center gap-2">
+                            <input class="form-check-input urgency-switch" type="checkbox" id="urgencyFilter" 
+                                   title="Show urgent items only">
+                            <label class="form-check-label" for="urgencyFilter">
+                                <i class="bi bi-exclamation-triangle text-danger me-1"></i>
+                                Urgent Only
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Grid -->
+        <div class="row g-4" id="itemsGrid">
+            <!-- Items will be populated here -->
+        </div>
+    </div>
+
+    <!-- Item Details Modal -->
+    <div class="modal fade" id="itemModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Item Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" title="Close modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <img src="" alt="Item Image" class="img-fluid rounded" id="modalItemImage">
+                        </div>
+                        <div class="col-md-6">
+                            <h4 id="modalItemName"></h4>
+                            <p class="text-muted" id="modalItemCategory"></p>
+                            <div class="mb-3">
+                                <span class="badge bg-primary" id="modalItemType"></span>
+                                <span class="badge bg-danger d-none" id="modalItemUrgent">Urgent</span>
+                            </div>
+                            <p id="modalItemDescription"></p>
+                            <hr>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-person-circle fs-4 me-2"></i>
+                                <div>
+                                    <p class="mb-0" id="modalItemOwner"></p>
+                                    <small class="text-muted" id="modalItemContact"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="requestItemBtn">
+                        Request Item
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = 'http://localhost:8080/api';
+
+        // Check if user is logged in
+        const checkAuth = () => {
+            try {
+                const userStr = localStorage.getItem('user');
+                console.log('Stored user data:', userStr);
+                
+                if (!userStr) {
+                    console.log('No user data found');
+                    window.location.replace('login.html');
+                    return false;
+                }
+
+                const user = JSON.parse(userStr);
+                console.log('Parsed user:', user);
+                
+                if (!user || !user.id || !user.email) {
+                    console.log('Invalid user data');
+                    localStorage.clear();
+                    window.location.replace('login.html');
+                    return false;
+                }
+
+                return user;
+            } catch (error) {
+                console.error('Auth check error:', error);
+                localStorage.clear();
+                window.location.replace('login.html');
+                return false;
+            }
+        };
+
+        // Show alert function
+        const showAlert = (message, type = 'success') => {
+            const alertContainer = document.querySelector('.alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        };
+
+        // Logout function
+        const logout = () => {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        };
+
+        // Item listing functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const itemsGrid = document.getElementById('itemsGrid');
+            const searchInput = document.getElementById('searchInput');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const urgencyFilter = document.getElementById('urgencyFilter');
+
+            // Unify localStorage: if user exists but userId/userName do not, set them
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const userObj = JSON.parse(userStr);
+                    if (userObj && userObj.id && userObj.name) {
+                        if (!localStorage.getItem('userId')) localStorage.setItem('userId', userObj.id);
+                        if (!localStorage.getItem('userName')) localStorage.setItem('userName', userObj.name);
+                    }
+                } catch (e) {}
+            }
+
+            // Check authentication
+            const user = checkAuth();
+            if (!user) return;
+
+            // Set user name
+            document.getElementById('userName').textContent = user.name || 'User';
+
+            // Setup logout button
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+
+            // Load items
+            const loadItems = async (filters = {}) => {
+                try {
+                    let searchParams = new URLSearchParams();
+                    if (filters.search) searchParams.append('keyword', filters.search);
+                    if (filters.category) searchParams.append('category', filters.category);
+                    // Only append type if it's one of the valid enum values
+                    if (filters.type && ['LEND', 'SELL'].includes(filters.type)) {
+                        searchParams.append('type', filters.type);
+                    }
+                    if (filters.urgent) searchParams.append('urgency', 'URGENT');
+
+                    const queryString = searchParams.toString();
+                    const url = `${API_URL}/items${queryString ? '?' + queryString : ''}`;
+                    console.log('Fetching items with URL:', url);
+
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.message || 'Failed to fetch items');
+                    }
+                    const data = await response.json();
+                    renderItems(data.data || data || []); // fallback to data if .data is undefined
+                } catch (error) {
+                    console.error('Error loading items:', error);
+                    showAlert(error.message || 'Failed to fetch items', 'danger');
+                    if (error.message.includes('Unauthorized')) {
+                        logout();
+                    }
+                }
+            };
+
+            // Render items
+            const renderItems = (items) => {
+                itemsGrid.innerHTML = items.map(item => `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card item-card h-100">
+                            ${item.urgent ? '<span class="badge bg-danger item-badge">Urgent</span>' : ''}
+                            <img src="${item.imageUrl}" class="card-img-top" alt="${item.name}">
+                            <div class="card-body">
+                                <h5 class="card-title">${item.name}</h5>
+                                <p class="card-text text-truncate">${item.description}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="badge bg-secondary">${item.category}</span>
+                                        <span class="badge bg-primary">${item.type}</span>
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm" 
+                                            onclick="window.showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                        View Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            // Show item details
+            window.showItemDetails = (item) => {
+                document.getElementById('modalItemImage').src = item.imageUrl;
+                document.getElementById('modalItemName').textContent = item.name;
+                document.getElementById('modalItemCategory').textContent = item.category;
+                document.getElementById('modalItemType').textContent = item.type;
+                document.getElementById('modalItemDescription').textContent = item.description;
+                document.getElementById('modalItemOwner').textContent = item.ownerName;
+                document.getElementById('modalItemContact').textContent = item.ownerEmail;
+                
+                const urgentBadge = document.getElementById('modalItemUrgent');
+                if (item.urgent) {
+                    urgentBadge.classList.remove('d-none');
+                } else {
+                    urgentBadge.classList.add('d-none');
+                }
+
+                const requestBtn = document.getElementById('requestItemBtn');
+                requestBtn.onclick = () => requestItem(item.id);
+
+                new bootstrap.Modal(document.getElementById('itemModal')).show();
+            };
+
+            // Request item
+            const requestItem = async (itemId) => {
+                try {
+                    const userStr = localStorage.getItem('user');
+                    const user = JSON.parse(userStr);
+                    if (!user || !user.id) {
+                        throw new Error('User not logged in');
+                    }
+                    
+                    const response = await fetch(`${API_URL}/requests`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            itemId: itemId,
+                            requesterId: user.id
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.message || 'Failed to send request');
+                    }
+                    
+                    showAlert('Request sent successfully!', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+                    modal.hide();
+                } catch (error) {
+                    showAlert(error.message, 'danger');
+                    if (error.message.includes('Unauthorized')) {
+                        logout();
+                    }
+                }
+            };
+
+            // Event listeners for filters
+            searchInput.addEventListener('input', debounce(() => {
+                loadItems({
+                    search: searchInput.value,
+                    category: categoryFilter.value,
+                    type: typeFilter.value,
+                    urgent: urgencyFilter.checked
+                });
+            }, 300));
+
+            [categoryFilter, typeFilter, urgencyFilter].forEach(filter => {
+                filter.addEventListener('change', () => {
+                    loadItems({
+                        search: searchInput.value,
+                        category: categoryFilter.value,
+                        type: typeFilter.value?.toUpperCase(), // Convert LEND/SELL to uppercase
+                        urgent: urgencyFilter.checked
+                    });
+                });
+            });
+
+            // Debounce helper
+            function debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            // Initial load
+            loadItems();
+        });
+    </script>
+</body>
+</html>
