@@ -282,7 +282,6 @@ a:hover {
 
 /* Card styles and hover effects */
 .card {
-    border: none;
     border-radius: 1.25rem;
     background: white;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
@@ -384,7 +383,6 @@ a:hover {
 
 /* Navigation styles */
 .navbar {
-    background-color: white;
     padding: 1rem 0;
     position: sticky;
     top: 0;
@@ -499,7 +497,6 @@ a:hover {
 /* Item card styles */
 .item-card {
     height: 100%;
-    border: none;
     border-radius: 1.25rem;
     background: white;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
