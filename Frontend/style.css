@@ -174,6 +174,40 @@ html {
 h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     letter-spacing: -0.025em;
+    color: var(--text-dark);
+}
+
+/* Ensure all labels are visible */
+label, .form-label, .form-check-label {
+    color: var(--text-dark) !important;
+}
+
+/* Form helper text */
+.form-text, small {
+    color: var(--text-muted) !important;
+}
+
+/* General text elements */
+p, span, div {
+    color: var(--text-dark);
+}
+
+/* Bootstrap text utilities overrides */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-center, .text-start, .text-end {
+    color: var(--text-dark) !important;
+}
+
+/* Invalid feedback */
+.invalid-feedback, .valid-feedback {
+    color: var(--danger-color) !important;
+}
+
+.valid-feedback {
+    color: var(--success-color) !important;
 }
 
 /* Links */
@@ -380,16 +414,45 @@ a:hover {
     color: var(--text-dark);
 }
 
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
 .form-control:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.2);
     background: rgba(30, 41, 59, 0.9);
+    color: var(--text-dark);
 }
 
 .form-floating label {
     padding-left: 1.25rem;
     color: var(--text-muted);
     font-weight: 500;
+}
+
+/* Ensure all input, textarea, and select elements have proper dark theme colors */
+input, textarea, select {
+    color: var(--text-dark) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.8;
+}
+
+/* Specific styling for textareas */
+textarea.form-control {
+    background: rgba(15, 23, 42, 0.7);
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+}
+
+textarea.form-control:focus {
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--text-dark);
+    border-color: var(--primary-color);
 }
 
 .auth-btn {
@@ -957,6 +1020,7 @@ a:hover {
     padding: 0.1rem 0;
     display: block;
     margin-bottom: 0.2rem;
+    color: var(--text-dark);
 }
 
 .message-time {
@@ -1050,11 +1114,14 @@ a:hover {
     font-weight: 500;
     transition: all 0.3s ease;
     background-position: right 0.75rem center;
+    background-color: rgba(15, 23, 42, 0.7);
+    color: var(--text-dark);
 }
 
 .form-select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 0.25rem rgba(168, 85, 247, 0.2);
+    background-color: rgba(30, 41, 59, 0.9);
 }
 
 .urgency-switch {
@@ -1178,19 +1245,19 @@ a:hover {
 .notification-message {
     margin: 0;
     font-size: 14px;
-    color: #212529;
+    color: var(--text-dark);
     line-height: 1.4;
 }
 
 .notification-time {
-    color: #6c757d;
+    color: var(--text-muted);
     font-size: 12px;
 }
 
 .notification-delete {
     background: none;
     border: none;
-    color: #6c757d;
+    color: var(--text-muted);
     cursor: pointer;
     padding: 4px 8px;
     opacity: 0;
