@@ -5,9 +5,12 @@ import com.gotyourback.model.Item;
 import com.gotyourback.model.Item.ItemStatus;
 import com.gotyourback.model.Item.ItemType;
 import com.gotyourback.model.User;
+import com.gotyourback.model.Notification;
 import com.gotyourback.repository.ItemRepository;
 import com.gotyourback.repository.UserRepository;
+import com.gotyourback.repository.RequestRepository;
 import com.gotyourback.service.ItemService;
+import com.gotyourback.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,8 @@ public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final RequestRepository requestRepository;
 
     @Override
     public ItemDto createItem(ItemDto itemDto) {
@@ -89,14 +94,46 @@ public class ItemServiceImpl implements ItemService {
         item.setUrgency(itemDto.getUrgency());
         item.setImageUrl(itemDto.getImageUrl());
 
-        item = itemRepository.save(item);
-        return convertToDto(item);
+        Item savedItem = itemRepository.save(item);
+        
+        // Notify users who have pending/accepted requests for this item
+        requestRepository.findByItem_Id(id).forEach(request -> {
+            if (request.getStatus() == com.gotyourback.model.Request.RequestStatus.PENDING || 
+                request.getStatus() == com.gotyourback.model.Request.RequestStatus.ACCEPTED) {
+                notificationService.createNotification(
+                    request.getRequester().getId(),
+                    Notification.NotificationType.ITEM_UPDATED,
+                    "Item '" + savedItem.getName() + "' has been updated by the owner",
+                    savedItem.getId(),
+                    request.getId(),
+                    null
+                );
+            }
+        });
+        
+        return convertToDto(savedItem);
     }
 
     @Override
     public void deleteItem(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
+        
+        // Notify users who have pending/accepted requests for this item
+        requestRepository.findByItem_Id(id).forEach(request -> {
+            if (request.getStatus() == com.gotyourback.model.Request.RequestStatus.PENDING || 
+                request.getStatus() == com.gotyourback.model.Request.RequestStatus.ACCEPTED) {
+                notificationService.createNotification(
+                    request.getRequester().getId(),
+                    Notification.NotificationType.ITEM_DELETED,
+                    "Item '" + item.getName() + "' has been deleted by the owner",
+                    null,
+                    request.getId(),
+                    null
+                );
+            }
+        });
+        
         itemRepository.delete(item);
     }
 
@@ -110,9 +147,25 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> getItemsByOwnerId(Long ownerId) {
-        List<Item> items = itemRepository.findByOwnerId(ownerId);
+        List<Item> items = itemRepository.findActiveByOwnerId(ownerId);
         return items.stream()
                 .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ItemDto> getSoldItemsByOwnerId(Long ownerId) {
+        List<Item> items = itemRepository.findSoldByOwnerId(ownerId);
+        return items.stream()
+                .map(this::convertToSoldItemDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ItemDto> getLentItemsByOwnerId(Long ownerId) {
+        List<Item> items = itemRepository.findLentByOwnerId(ownerId);
+        return items.stream()
+                .map(this::convertToLentItemDto)
                 .collect(Collectors.toList());
     }
 
@@ -129,5 +182,44 @@ public class ItemServiceImpl implements ItemService {
     dto.setOwnerName(item.getOwner().getName());
     dto.setOwnerEmail(item.getOwner().getEmail());
     return dto;
+    }
+
+    private ItemDto convertToSoldItemDto(Item item) {
+        ItemDto dto = convertToDto(item);
+        
+        // Find the accepted/done request for this item to get buyer information
+        requestRepository.findByItem_Id(item.getId()).stream()
+                .filter(request -> request.getStatus() == com.gotyourback.model.Request.RequestStatus.DONE)
+                .findFirst()
+                .ifPresent(request -> {
+                    dto.setBuyerName(request.getRequester().getName());
+                    dto.setBuyerEmail(request.getRequester().getEmail());
+                });
+        
+        return dto;
+    }
+    
+    private ItemDto convertToLentItemDto(Item item) {
+        ItemDto dto = convertToDto(item);
+        dto.setStatus(item.getStatus().toString());
+        
+        // Find the accepted/done request for this item to get borrower information
+        requestRepository.findByItem_Id(item.getId()).stream()
+                .filter(request -> request.getStatus() == com.gotyourback.model.Request.RequestStatus.ACCEPTED 
+                                || request.getStatus() == com.gotyourback.model.Request.RequestStatus.DONE)
+                .findFirst()
+                .ifPresent(request -> {
+                    dto.setBorrowerName(request.getRequester().getName());
+                    dto.setBorrowerEmail(request.getRequester().getEmail());
+                    dto.setLentAt(request.getLentAt());
+                    dto.setCompletedAt(request.getCompletedAt());
+                    
+                    // Check if item has been returned (both parties confirmed)
+                    Boolean borrowerConfirmed = request.getBorrowerConfirmedReturn() != null && request.getBorrowerConfirmedReturn();
+                    Boolean lenderConfirmed = request.getLenderConfirmedReturn() != null && request.getLenderConfirmedReturn();
+                    dto.setIsReturned(borrowerConfirmed && lenderConfirmed);
+                });
+        
+        return dto;
     }
 }

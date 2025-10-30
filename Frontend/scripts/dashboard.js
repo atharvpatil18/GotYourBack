@@ -63,6 +63,84 @@ function displayUserItems(items = []) {
     }).join('');
 }
 
+function displaySoldItems(soldItems = []) {
+    const container = document.getElementById('soldItems');
+    if (!container) return;
+
+    if (!soldItems.length) {
+        const emptyTemplate = document.getElementById('emptySoldItemsTemplate');
+        container.innerHTML = emptyTemplate.innerHTML;
+        return;
+    }
+
+    container.innerHTML = soldItems.map(item => {
+        const template = document.getElementById('soldItemTemplate');
+        let itemHtml = template.innerHTML
+            .replace(/{imageUrl}/g, item.imageUrl || 'assets/placeholder.png')
+            .replace(/{name}/g, item.name)
+            .replace(/{category}/g, item.category)
+            .replace(/{description}/g, item.description)
+            .replace(/{buyerName}/g, item.buyerName || 'Unknown');
+        return itemHtml;
+    }).join('');
+}
+
+function displayLentItems(lentItems = [], filter = 'all') {
+    const container = document.getElementById('lentItems');
+    if (!container) return;
+
+    // Store all items for filtering
+    window.allLentItems = lentItems;
+
+    // Filter items based on selection
+    let filteredItems = lentItems;
+    if (filter === 'currentlylent') {
+        filteredItems = lentItems.filter(item => !item.isReturned);
+    } else if (filter === 'returned') {
+        filteredItems = lentItems.filter(item => item.isReturned);
+    }
+
+    if (!filteredItems.length) {
+        const emptyTemplate = document.getElementById('emptyLentItemsTemplate');
+        container.innerHTML = emptyTemplate.innerHTML;
+        return;
+    }
+
+    container.innerHTML = filteredItems.map(item => {
+        const template = document.getElementById('lentItemTemplate');
+        
+        // Determine status badge
+        let statusBadge = '';
+        if (item.isReturned) {
+            statusBadge = '<span class="badge bg-success">RETURNED</span>';
+        } else {
+            statusBadge = '<span class="badge bg-warning text-dark">CURRENTLY LENT</span>';
+        }
+        
+        // Format time information
+        let timeInfo = '<div class="small mt-2 text-muted">';
+        if (item.lentAt) {
+            const lentDate = new Date(item.lentAt);
+            timeInfo += `<i class="bi bi-calendar"></i> Lent on ${lentDate.toLocaleDateString()}`;
+        }
+        if (item.isReturned && item.completedAt) {
+            const returnedDate = new Date(item.completedAt);
+            timeInfo += ` <i class="bi bi-arrow-return-left ms-2"></i> Returned on ${returnedDate.toLocaleDateString()}`;
+        }
+        timeInfo += '</div>';
+        
+        let itemHtml = template.innerHTML
+            .replace(/{imageUrl}/g, item.imageUrl || 'assets/placeholder.png')
+            .replace(/{name}/g, item.name)
+            .replace(/{category}/g, item.category)
+            .replace(/{description}/g, item.description)
+            .replace(/{borrowerName}/g, item.borrowerName || 'Unknown')
+            .replace(/{statusBadge}/g, statusBadge)
+            .replace(/{timeInfo}/g, timeInfo);
+        return itemHtml;
+    }).join('');
+}
+
 function displayRequests(userRequests = [], receivedRequests = []) {
     const container = document.getElementById('myRequests');
     if (!container) return;
@@ -79,6 +157,7 @@ function displayRequests(userRequests = [], receivedRequests = []) {
 
     let html = '';
     const requestTemplate = document.getElementById('requestItemTemplate');
+    const user = getUser();
 
     function createRequestHtml(request, type) {
         let html = requestTemplate.innerHTML
@@ -103,11 +182,103 @@ function displayRequests(userRequests = [], receivedRequests = []) {
                 </div>
             `;
         } else if (request.status === 'ACCEPTED') {
-            actionButtons = `
-                <button class="btn btn-outline-primary btn-sm" onclick="updateRequestStatus('${request.id}', 'DONE')" title="Mark as done">
-                    <i class="bi bi-check-circle"></i> Mark as Done
-                </button>
-            `;
+            const isBorrower = type === 'sent';
+            const isLendType = request.item?.type === 'LEND';
+            
+            if (!isLendType) {
+                // For SELL items, just show Mark as Done
+                actionButtons = `
+                    <button class="btn btn-outline-primary btn-sm" onclick="updateRequestStatus('${request.id}', 'DONE')" title="Mark as done">
+                        <i class="bi bi-check-circle"></i> Mark as Done
+                    </button>
+                `;
+            } else {
+                // For LEND items, show lent/receipt flow
+                const lenderMarkedAsLent = request.lenderMarkedAsLent || false;
+                const borrowerConfirmedReceipt = request.borrowerConfirmedReceipt || false;
+                
+                let statusHtml = '<div class="small mt-2">';
+                
+                if (!isBorrower && !lenderMarkedAsLent) {
+                    // Owner hasn't marked as lent yet
+                    actionButtons = `
+                        <button class="btn btn-outline-primary btn-sm" onclick="markAsLent('${request.id}')" title="Mark as lent">
+                            <i class="bi bi-box-arrow-right"></i> Mark as Lent
+                        </button>
+                    `;
+                } else if (!isBorrower && lenderMarkedAsLent && !borrowerConfirmedReceipt) {
+                    // Owner marked as lent, waiting for borrower to confirm
+                    statusHtml += '<span class="text-info"><i class="bi bi-check-circle"></i> Marked as lent</span><br>';
+                    statusHtml += '<span class="text-muted"><i class="bi bi-clock"></i> Waiting for borrower to confirm receipt</span>';
+                    actionButtons = statusHtml + '</div>';
+                } else if (isBorrower && !lenderMarkedAsLent) {
+                    // Borrower waiting for owner to mark as lent
+                    statusHtml += '<span class="text-muted"><i class="bi bi-clock"></i> Waiting for lender to hand over item</span>';
+                    actionButtons = statusHtml + '</div>';
+                } else if (isBorrower && lenderMarkedAsLent && !borrowerConfirmedReceipt) {
+                    // Borrower can confirm receipt
+                    actionButtons = `
+                        <button class="btn btn-outline-success btn-sm" onclick="confirmReceipt('${request.id}')" title="Confirm receipt">
+                            <i class="bi bi-check-circle"></i> Confirm Receipt
+                        </button>
+                        <div class="small mt-2">
+                            <span class="text-info"><i class="bi bi-info-circle"></i> Item marked as lent by owner</span>
+                        </div>
+                    `;
+                } else if (borrowerConfirmedReceipt) {
+                    // Both parties confirmed, show mark as done
+                    statusHtml += '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Item received by borrower</span>';
+                    actionButtons = `
+                        <button class="btn btn-outline-primary btn-sm" onclick="updateRequestStatus('${request.id}', 'DONE')" title="Mark as done">
+                            <i class="bi bi-check-circle"></i> Mark as Done
+                        </button>
+                        ${statusHtml}</div>
+                    `;
+                }
+            }
+        } else if (request.status === 'DONE') {
+            // Check if this is a LEND or SELL type item
+            const isLendType = request.item?.type === 'LEND';
+            
+            if (isLendType) {
+                // Show return confirmation status and buttons for LEND items
+                const isBorrower = type === 'sent'; // sent means user is borrower
+                const hasUserConfirmed = isBorrower ? request.borrowerConfirmedReturn : request.lenderConfirmedReturn;
+                const hasOtherConfirmed = isBorrower ? request.lenderConfirmedReturn : request.borrowerConfirmedReturn;
+                
+                let confirmationStatus = '<div class="small mt-2">';
+                if (hasUserConfirmed && hasOtherConfirmed) {
+                    confirmationStatus += '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Return confirmed by both parties</span>';
+                } else {
+                    if (hasUserConfirmed) {
+                        confirmationStatus += '<span class="text-info"><i class="bi bi-check-circle"></i> You confirmed</span><br>';
+                    }
+                    if (hasOtherConfirmed) {
+                        confirmationStatus += `<span class="text-info"><i class="bi bi-check-circle"></i> ${isBorrower ? 'Lender' : 'Borrower'} confirmed</span>`;
+                    } else if (hasUserConfirmed) {
+                        confirmationStatus += `<span class="text-muted"><i class="bi bi-clock"></i> Waiting for ${isBorrower ? 'lender' : 'borrower'}</span>`;
+                    }
+                }
+                confirmationStatus += '</div>';
+                
+                if (!hasUserConfirmed) {
+                    actionButtons = `
+                        <button class="btn btn-outline-success btn-sm" onclick="confirmReturn('${request.id}', ${isBorrower})" title="Confirm ${isBorrower ? 'return' : 'receipt'}">
+                            <i class="bi bi-check-circle"></i> Confirm ${isBorrower ? 'Return' : 'Receipt'}
+                        </button>
+                        ${confirmationStatus}
+                    `;
+                } else {
+                    actionButtons = confirmationStatus;
+                }
+            } else {
+                // For SELL items, just show "Completed" status
+                actionButtons = `
+                    <div class="small mt-2">
+                        <span class="text-success"><i class="bi bi-check-circle-fill"></i> Transaction Completed</span>
+                    </div>
+                `;
+            }
         }
         return html.replace(/{actionButtons}/g, actionButtons);
     }
@@ -146,6 +317,52 @@ async function updateRequestStatus(requestId, status) {
     }
 }
 
+async function confirmReturn(requestId, isBorrower) {
+    try {
+        const user = getUser();
+        if (!user) return;
+        
+        await api.confirmReturn(requestId, user.id, isBorrower);
+        showAlert(`Return ${isBorrower ? 'confirmation' : 'receipt'} recorded successfully`, 'success');
+        await loadDashboardData();
+    } catch (error) {
+        console.error('Error confirming return:', error);
+        showAlert(error.message || 'Failed to confirm return', 'danger');
+    }
+}
+
+async function markAsLent(requestId) {
+    try {
+        const user = getUser();
+        if (!user) return;
+        
+        await api.markAsLent(requestId, user.id);
+        showAlert('Item marked as lent successfully', 'success');
+        await loadDashboardData();
+    } catch (error) {
+        console.error('Error marking as lent:', error);
+        showAlert(error.message || 'Failed to mark as lent', 'danger');
+    }
+}
+
+async function confirmReceipt(requestId) {
+    try {
+        const user = getUser();
+        if (!user) return;
+        
+        await api.confirmReceipt(requestId, user.id);
+        showAlert('Receipt confirmed successfully', 'success');
+        await loadDashboardData();
+    } catch (error) {
+        console.error('Error confirming receipt:', error);
+        showAlert(error.message || 'Failed to confirm receipt', 'danger');
+    }
+}
+
+// Export functions to global scope for HTML onclick handlers
+window.markAsLent = markAsLent;
+window.confirmReceipt = confirmReceipt;
+
 async function deleteItem(itemId) {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
@@ -176,11 +393,15 @@ async function loadDashboardData() {
     try {
         showLoading('myListings');
         showLoading('myRequests');
+        showLoading('soldItems');
+        showLoading('lentItems');
 
-        const [userItems, userRequests, receivedRequests] = await Promise.all([
+        const [userItems, userRequests, receivedRequests, soldItems, lentItems] = await Promise.all([
             api.getUserItems(user.id),
             api.getUserRequests(user.id),
-            api.getReceivedRequests(user.id)
+            api.getReceivedRequests(user.id),
+            api.getSoldItems(user.id),
+            api.getLentItems(user.id)
         ]);
 
         // Update stats first
@@ -189,6 +410,8 @@ async function loadDashboardData() {
         // Display data
         displayUserItems(userItems);
         displayRequests(userRequests, receivedRequests);
+        displaySoldItems(soldItems);
+        displayLentItems(lentItems);
 
         // Setup search
         const search = document.getElementById('listingSearch');
@@ -230,6 +453,14 @@ async function loadDashboardData() {
                 displayRequests(filtered.sent, filtered.received);
             });
         });
+
+        // Setup lent items filters
+        document.querySelectorAll('input[name="lentFilter"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const filter = e.target.id.replace('Lent', '').replace('currently', 'currentlyLent').toLowerCase();
+                displayLentItems(lentItems, filter);
+            });
+        });
     } catch (error) {
         console.error('Error loading dashboard:', error);
         showAlert('Failed to load dashboard data', 'danger');
@@ -248,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Make functions available globally
 Object.assign(window, {
     updateRequestStatus,
+    confirmReturn,
     deleteItem,
     showItemDetails: item => {
         try {

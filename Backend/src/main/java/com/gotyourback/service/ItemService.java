@@ -19,4 +19,8 @@ public interface ItemService {
     void updateItemStatus(Long id, ItemStatus status);
     
     List<ItemDto> getItemsByOwnerId(Long ownerId);
+    
+    List<ItemDto> getSoldItemsByOwnerId(Long ownerId);
+    
+    List<ItemDto> getLentItemsByOwnerId(Long ownerId);
 }

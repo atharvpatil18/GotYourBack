@@ -6,6 +6,7 @@
     <title>Profile - GotYourBack</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-light">
@@ -33,7 +34,25 @@
                         <a class="nav-link" href="dashboard.html">Dashboard</a>
                     </li>
                 </ul>
-                <div class="d-flex">
+                <div class="d-flex align-items-center">
+                    <!-- Notification Bell -->
+                    <div class="notification-container">
+                        <button class="btn btn-outline-primary position-relative me-2" id="notification-bell" onclick="toggleNotificationDropdown()" title="View notifications">
+                            <i class="bi bi-bell"></i>
+                            <span class="notification-badge" id="notification-badge">0</span>
+                        </button>
+                        
+                        <div class="notification-dropdown" id="notification-dropdown">
+                            <div class="notification-header">
+                                <h6>Notifications</h6>
+                                <button class="btn btn-sm btn-link" onclick="handleMarkAllRead()">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <div class="notification-item empty">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button class="btn btn-outline-danger" onclick="logout()">
                         <i class="bi bi-box-arrow-right"></i> Logout
                     </button>
@@ -116,6 +135,7 @@
     <div class="alert-container position-fixed bottom-0 end-0 p-3"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script type="module" src="./scripts/profile.js"></script>
 </body>
 </html>

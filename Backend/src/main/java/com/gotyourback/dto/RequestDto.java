@@ -16,4 +16,11 @@ public class RequestDto {
     private String ownerEmail;
     private LocalDateTime createdAt;
     private ItemDto item;
+    private Boolean borrowerConfirmedReturn;
+    private Boolean lenderConfirmedReturn;
+    private Boolean lenderMarkedAsLent;
+    private Boolean borrowerConfirmedReceipt;
+    private LocalDateTime lentAt;
+    private LocalDateTime receivedAt;
+    private LocalDateTime completedAt;
 }

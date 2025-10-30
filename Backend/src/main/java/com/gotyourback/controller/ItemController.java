@@ -59,4 +59,14 @@ public class ItemController {
     public ResponseEntity<List<ItemDto>> getUserItems(@PathVariable Long userId) {
         return ResponseEntity.ok(itemService.getItemsByOwnerId(userId));
     }
+    
+    @GetMapping("/user/{userId}/sold")
+    public ResponseEntity<List<ItemDto>> getUserSoldItems(@PathVariable Long userId) {
+        return ResponseEntity.ok(itemService.getSoldItemsByOwnerId(userId));
+    }
+    
+    @GetMapping("/user/{userId}/lent")
+    public ResponseEntity<List<ItemDto>> getUserLentItems(@PathVariable Long userId) {
+        return ResponseEntity.ok(itemService.getLentItemsByOwnerId(userId));
+    }
 }

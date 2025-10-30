@@ -47,4 +47,26 @@ public class RequestController {
     public ResponseEntity<RequestDto> markRequestAsDone(@PathVariable Long id) {
         return ResponseEntity.ok(requestService.markRequestAsDone(id));
     }
+    
+    @PutMapping("/{requestId}/confirm-return")
+    public ResponseEntity<RequestDto> confirmReturn(
+            @PathVariable Long requestId,
+            @RequestParam Long userId,
+            @RequestParam boolean isBorrower) {
+        return ResponseEntity.ok(requestService.confirmReturn(requestId, userId, isBorrower));
+    }
+    
+    @PutMapping("/{requestId}/mark-as-lent")
+    public ResponseEntity<RequestDto> markAsLent(
+            @PathVariable Long requestId,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(requestService.markAsLent(requestId, userId));
+    }
+    
+    @PutMapping("/{requestId}/confirm-receipt")
+    public ResponseEntity<RequestDto> confirmReceipt(
+            @PathVariable Long requestId,
+            @RequestParam Long userId) {
+        return ResponseEntity.ok(requestService.confirmReceipt(requestId, userId));
+    }
 }

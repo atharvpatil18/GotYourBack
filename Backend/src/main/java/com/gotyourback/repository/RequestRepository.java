@@ -7,6 +7,7 @@ import java.util.List;
 public interface RequestRepository extends JpaRepository<Request, Long> {
     List<Request> findByRequesterId(Long requesterId);
     List<Request> findByItem_OwnerId(Long ownerId);
+    List<Request> findByItem_Id(Long itemId);
     Long countByRequesterIdAndStatusIn(Long requesterId, List<Request.RequestStatus> statuses);
     Long countByRequesterIdAndStatus(Long requesterId, Request.RequestStatus status);
     List<Request> findByRequesterIdAndStatus(Long requesterId, Request.RequestStatus status);

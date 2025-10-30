@@ -7,6 +7,7 @@ import com.gotyourback.dto.ItemDto;
 import com.gotyourback.model.Request;
 import com.gotyourback.model.Item;
 import com.gotyourback.model.User;
+import com.gotyourback.model.Notification;
 import com.gotyourback.repository.RequestRepository;
 import com.gotyourback.repository.ItemRepository;
 import com.gotyourback.repository.UserRepository;
@@ -25,6 +26,7 @@ public class RequestService {
     private final RequestRepository requestRepository;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     
     private ItemDto createItemDto(Item item) {
         ItemDto dto = new ItemDto();
@@ -56,6 +58,17 @@ public class RequestService {
         request.setStatus(RequestStatus.PENDING);
         
         request = requestRepository.save(request);
+        
+        // Create notification for item owner
+        notificationService.createNotification(
+            item.getOwner().getId(),
+            Notification.NotificationType.REQUEST_CREATED,
+            requester.getName() + " has requested your item: " + item.getName(),
+            item.getId(),
+            request.getId(),
+            null
+        );
+        
         return convertToDto(request);
     }
 
@@ -64,9 +77,42 @@ public class RequestService {
         Request request = requestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 
+        RequestStatus oldStatus = request.getStatus();
         request.setStatus(status);
         if (status == RequestStatus.ACCEPTED) {
             request.getItem().setStatus(ItemStatus.UNAVAILABLE);
+            
+            // Notify requester that their request was accepted
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_ACCEPTED,
+                "Your request for '" + request.getItem().getName() + "' has been accepted",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        } else if (status == RequestStatus.REJECTED) {
+            // Notify requester that their request was rejected
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_REJECTED,
+                "Your request for '" + request.getItem().getName() + "' has been rejected",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        }
+        
+        // Notify for status changes other than ACCEPTED/REJECTED (which already have specific notifications)
+        if (oldStatus != status && status != RequestStatus.ACCEPTED && status != RequestStatus.REJECTED) {
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                "Status of your request for '" + request.getItem().getName() + "' changed to " + status,
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
         }
         
         request = requestRepository.save(request);
@@ -79,7 +125,186 @@ public class RequestService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 
         request.setStatus(RequestStatus.DONE);
-        request.getItem().setStatus(ItemStatus.AVAILABLE);
+        // Don't set item back to AVAILABLE yet - wait for return confirmation
+        
+        // Notify both requester and owner that request is completed
+        notificationService.createNotification(
+            request.getRequester().getId(),
+            Notification.NotificationType.REQUEST_COMPLETED,
+            "Your request for '" + request.getItem().getName() + "' is completed. Please confirm return.",
+            request.getItem().getId(),
+            request.getId(),
+            null
+        );
+        
+        notificationService.createNotification(
+            request.getItem().getOwner().getId(),
+            Notification.NotificationType.REQUEST_COMPLETED,
+            "Request for your item '" + request.getItem().getName() + "' is completed. Await return confirmation.",
+            request.getItem().getId(),
+            request.getId(),
+            null
+        );
+        
+        request = requestRepository.save(request);
+        return convertToDto(request);
+    }
+    
+    @Transactional
+    public RequestDto confirmReturn(Long requestId, Long userId, boolean isBorrower) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        
+        if (request.getStatus() != RequestStatus.DONE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request must be in DONE status");
+        }
+        
+        if (isBorrower) {
+            // Borrower confirms they returned the item
+            request.setBorrowerConfirmedReturn(true);
+            notificationService.createNotification(
+                request.getItem().getOwner().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                request.getRequester().getName() + " confirmed returning '" + request.getItem().getName() + "'",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        } else {
+            // Lender confirms they received the item back
+            request.setLenderConfirmedReturn(true);
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                request.getItem().getOwner().getName() + " confirmed receiving '" + request.getItem().getName() + "'",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        }
+        
+        // If both confirmed, update item status and completion timestamp
+        // Note: Request is already in DONE status (verified at method entry), but we keep this check
+        // to ensure both confirmations are complete before changing item availability
+        if (Boolean.TRUE.equals(request.getBorrowerConfirmedReturn()) && Boolean.TRUE.equals(request.getLenderConfirmedReturn())) {
+            // For SELL items, mark as SOLD; for LEND items, make available again
+            if (request.getItem().getType() == Item.ItemType.SELL) {
+                request.getItem().setStatus(ItemStatus.SOLD);
+            } else {
+                request.getItem().setStatus(ItemStatus.AVAILABLE);
+            }
+            
+            request.setCompletedAt(java.time.LocalDateTime.now());
+            
+            // Notify both parties
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                "Item '" + request.getItem().getName() + "' return confirmed by both parties",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+            
+            notificationService.createNotification(
+                request.getItem().getOwner().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                "Item '" + request.getItem().getName() + "' return confirmed. Item is now available again.",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        }
+        
+        request = requestRepository.save(request);
+        return convertToDto(request);
+    }
+    
+    @Transactional
+    public RequestDto markAsLent(Long requestId, Long userId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        
+        if (!request.getItem().getOwner().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can mark item as lent");
+        }
+        
+        if (request.getStatus() != RequestStatus.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request must be in ACCEPTED status");
+        }
+        
+        request.setLenderMarkedAsLent(true);
+        request.setLentAt(java.time.LocalDateTime.now());
+        
+        // Notify borrower that item is ready/lent
+        notificationService.createNotification(
+            request.getRequester().getId(),
+            Notification.NotificationType.REQUEST_STATUS_CHANGED,
+            "'" + request.getItem().getName() + "' has been marked as lent by " + request.getItem().getOwner().getName() + ". Please confirm receipt.",
+            request.getItem().getId(),
+            request.getId(),
+            null
+        );
+        
+        request = requestRepository.save(request);
+        return convertToDto(request);
+    }
+    
+    @Transactional
+    public RequestDto confirmReceipt(Long requestId, Long userId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        
+        if (!request.getRequester().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the borrower can confirm receipt");
+        }
+        
+        if (request.getStatus() != RequestStatus.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request must be in ACCEPTED status");
+        }
+        
+        if (!Boolean.TRUE.equals(request.getLenderMarkedAsLent())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lender must mark item as lent first");
+        }
+        
+        request.setBorrowerConfirmedReceipt(true);
+        request.setReceivedAt(java.time.LocalDateTime.now());
+        
+        // For SELL items, mark as DONE and SOLD immediately after receipt confirmation
+        if (request.getItem().getType() == Item.ItemType.SELL) {
+            request.setStatus(RequestStatus.DONE);
+            request.getItem().setStatus(ItemStatus.SOLD);
+            request.setCompletedAt(java.time.LocalDateTime.now());
+            
+            // Notify both parties that transaction is complete
+            notificationService.createNotification(
+                request.getItem().getOwner().getId(),
+                Notification.NotificationType.REQUEST_COMPLETED,
+                "'" + request.getItem().getName() + "' has been sold to " + request.getRequester().getName(),
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+            
+            notificationService.createNotification(
+                request.getRequester().getId(),
+                Notification.NotificationType.REQUEST_COMPLETED,
+                "You have purchased '" + request.getItem().getName() + "'. Transaction complete.",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        } else {
+            // For LEND items, just notify owner that borrower confirmed receipt
+            notificationService.createNotification(
+                request.getItem().getOwner().getId(),
+                Notification.NotificationType.REQUEST_STATUS_CHANGED,
+                request.getRequester().getName() + " confirmed receiving '" + request.getItem().getName() + "'",
+                request.getItem().getId(),
+                request.getId(),
+                null
+            );
+        }
         
         request = requestRepository.save(request);
         return convertToDto(request);
@@ -121,6 +346,15 @@ public class RequestService {
         User owner = request.getItem().getOwner();
         dto.setOwnerName(owner.getName());
         dto.setOwnerEmail(owner.getEmail());
+        
+        // Set return confirmation fields
+        dto.setBorrowerConfirmedReturn(request.getBorrowerConfirmedReturn());
+        dto.setLenderConfirmedReturn(request.getLenderConfirmedReturn());
+        dto.setLenderMarkedAsLent(request.getLenderMarkedAsLent());
+        dto.setBorrowerConfirmedReceipt(request.getBorrowerConfirmedReceipt());
+        dto.setLentAt(request.getLentAt());
+        dto.setReceivedAt(request.getReceivedAt());
+        dto.setCompletedAt(request.getCompletedAt());
         
         // Set full item details
         dto.setItem(createItemDto(request.getItem()));

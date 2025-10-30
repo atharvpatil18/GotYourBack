@@ -109,6 +109,10 @@ export const api = {
     // User items and requests
     getUserItems: (userId) => makeRequest(API_CONFIG.ENDPOINTS.USER_ITEMS(userId)),
 
+    getSoldItems: (userId) => makeRequest(API_CONFIG.ENDPOINTS.USER_SOLD_ITEMS(userId)),
+    
+    getLentItems: (userId) => makeRequest(API_CONFIG.ENDPOINTS.USER_LENT_ITEMS(userId)),
+
     getUserRequests: (userId) => makeRequest(API_CONFIG.ENDPOINTS.USER_REQUESTS(userId)),
 
     getReceivedRequests: (userId) => makeRequest(API_CONFIG.ENDPOINTS.RECEIVED_REQUESTS(userId)),
@@ -142,6 +146,15 @@ export const api = {
     markRequestAsDone: (requestId) => 
         makeRequest(`${API_CONFIG.ENDPOINTS.REQUESTS}/${requestId}/done`, HTTP_METHODS.PUT),
 
+    confirmReturn: (requestId, userId, isBorrower) =>
+        makeRequest(`${API_CONFIG.ENDPOINTS.REQUESTS}/${requestId}/confirm-return?userId=${userId}&isBorrower=${isBorrower}`, HTTP_METHODS.PUT),
+
+    markAsLent: (requestId, userId) =>
+        makeRequest(`${API_CONFIG.ENDPOINTS.REQUESTS}/${requestId}/mark-as-lent?userId=${userId}`, HTTP_METHODS.PUT),
+
+    confirmReceipt: (requestId, userId) =>
+        makeRequest(`${API_CONFIG.ENDPOINTS.REQUESTS}/${requestId}/confirm-receipt?userId=${userId}`, HTTP_METHODS.PUT),
+
     // Profile endpoints
     getProfile: (userId) => makeRequest(API_CONFIG.ENDPOINTS.PROFILE(userId)),
 
@@ -169,5 +182,7 @@ export const api = {
         }
         return makeRequest(`${API_CONFIG.ENDPOINTS.MESSAGES}/send/${requestId}?senderId=${senderId}`, 
             HTTP_METHODS.POST, content);
-    }
+    },
+
+    deleteItem: (itemId) => makeRequest(`${API_CONFIG.ENDPOINTS.ITEMS}/${itemId}`, HTTP_METHODS.DELETE)
 };

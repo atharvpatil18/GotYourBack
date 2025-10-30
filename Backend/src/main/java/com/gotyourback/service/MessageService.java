@@ -4,6 +4,7 @@ import com.gotyourback.dto.MessageDto;
 import com.gotyourback.model.Message;
 import com.gotyourback.model.Request;
 import com.gotyourback.model.User;
+import com.gotyourback.model.Notification;
 import com.gotyourback.repository.MessageRepository;
 import com.gotyourback.repository.RequestRepository;
 import com.gotyourback.repository.UserRepository;
@@ -23,13 +24,17 @@ public class MessageService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private NotificationService notificationService;
 
     public MessageDto sendMessage(Long senderId, Long requestId, String content) {
         Request request = requestRepository.findById(requestId)
             .orElseThrow(() -> new RuntimeException("Request not found"));
             
-        // Only allow messaging if request is accepted
-        if (request.getStatus() != Request.RequestStatus.ACCEPTED) {
+        // Only allow messaging if request is accepted or done
+        if (request.getStatus() != Request.RequestStatus.ACCEPTED && 
+            request.getStatus() != Request.RequestStatus.DONE) {
             throw new RuntimeException("Cannot send messages for non-accepted requests");
         }
         
@@ -49,6 +54,17 @@ public class MessageService {
         message.setSentAt(LocalDateTime.now());
         
         message = messageRepository.save(message);
+        
+        // Create notification for receiver
+        notificationService.createNotification(
+            receiver.getId(),
+            Notification.NotificationType.MESSAGE_RECEIVED,
+            "New message from " + sender.getName() + " about '" + request.getItem().getName() + "'",
+            request.getItem().getId(),
+            request.getId(),
+            message.getId()
+        );
+        
         return convertToDto(message);
     }
 

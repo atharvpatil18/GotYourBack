@@ -5,6 +5,8 @@ const API_CONFIG = {
         LOGIN: '/auth/login',
         ITEMS: '/items',
         USER_ITEMS: (userId) => `/items/user/${userId}`,
+        USER_SOLD_ITEMS: (userId) => `/items/user/${userId}/sold`,
+        USER_LENT_ITEMS: (userId) => `/items/user/${userId}/lent`,
         USER_REQUESTS: (userId) => `/requests/user/${userId}`,
         RECEIVED_REQUESTS: (userId) => `/requests/received/${userId}`,
         REQUESTS: '/requests',
